@@ -8,6 +8,7 @@ from openpilot.selfdrive.ui.layouts.settings.device import DeviceLayout
 from openpilot.selfdrive.ui.onroad.cabin_camera_dialog import CabinCameraDialog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.common.hardware import HARDWARE
+from openpilot.sunnypilot.selfdrive.ui.alert_volume import WARNING_FLOOR
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import option_item_sp, multiple_button_item_sp, button_item_sp, \
@@ -21,10 +22,17 @@ from openpilot.system.ui.widgets.scroller_tici import LineSeparator
 
 def _volume_label(value: int) -> str:
   if value >= 101:
-    return "Auto"
+    return tr("Auto")
   if value == 0:
-    return "Muted"
+    return tr("Muted")
   return f"{value}%"
+
+
+def _warning_volume_label(value: int) -> str:
+  # soundd floors the two warning categories at WARNING_FLOOR, so they can never be muted
+  if value >= 101:
+    return tr("Auto")
+  return f"{max(value, WARNING_FLOOR)}%"
 
 
 offroad_time_options = {
@@ -96,16 +104,16 @@ class DeviceLayoutSP(DeviceLayout):
     self._quiet_mode_and_dcam.action_item.right_button.set_button_style(ButtonStyle.NORMAL)
 
     self._alert_volumes = [
-      option_item_sp(title=lambda t=title: tr(t), param=key, min_value=0, max_value=101, value_change_step=1,
-                     label_callback=_volume_label, inline=True)
-      for title, key in (
-        ("Engage Chime Volume", "EngageVolume"),
-        ("Disengage Chime Volume", "DisengageVolume"),
-        ("Prompt Volume", "PromptVolume"),
-        ("Distracted Prompt Volume", "PromptDistractedVolume"),
-        ("Refuse Chime Volume", "RefuseVolume"),
-        ("Soft Warning Volume (min 25%)", "WarningSoftVolume"),
-        ("Immediate Warning Volume (min 25%)", "WarningImmediateVolume"),
+      option_item_sp(title=lambda t=title: tr(t), param=key, min_value=0, max_value=101, value_change_step=5,
+                     label_callback=label, inline=True)
+      for title, key, label in (
+        ("Engage Chime Volume", "EngageVolume", _volume_label),
+        ("Disengage Chime Volume", "DisengageVolume", _volume_label),
+        ("Prompt Volume", "PromptVolume", _volume_label),
+        ("Distracted Prompt Volume", "PromptDistractedVolume", _volume_label),
+        ("Refuse Chime Volume", "RefuseVolume", _volume_label),
+        ("Soft Warning Volume (min 25%)", "WarningSoftVolume", _warning_volume_label),
+        ("Immediate Warning Volume (min 25%)", "WarningImmediateVolume", _warning_volume_label),
       )
     ]
 
