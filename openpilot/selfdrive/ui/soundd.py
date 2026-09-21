@@ -110,7 +110,9 @@ class Soundd(QuietMode):
 
     ret = np.zeros(frames, dtype=np.float32)
 
+    alert_scale = 1.0
     if self.should_play_sound(self.current_alert):
+      alert_scale = self.alert_volume.scale(self.current_alert)
       num_loops = sound_list[self.current_alert][1]
       sound_data = self.loaded_sounds[self.current_alert]
       written_frames = 0
@@ -131,7 +133,7 @@ class Soundd(QuietMode):
           self.pending_stop = False
           break
 
-    return ret * self.current_volume * self.alert_volume.scale(self.current_alert)
+    return ret * self.current_volume * alert_scale
 
   def callback(self, data_out: np.ndarray, frames: int, time, status) -> None:
     if status:

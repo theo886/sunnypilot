@@ -1,7 +1,10 @@
+import numpy as np
+
 from openpilot.cereal import log
 
 from openpilot.common.params import Params
 from openpilot.common.test import OpenpilotTestCase
+from openpilot.selfdrive.ui.soundd import Soundd
 from openpilot.sunnypilot.selfdrive.ui.alert_volume import AlertVolume, VOLUME_PARAMS, AUTO, WARNING_FLOOR
 
 # alert_volume.py keys VOLUME_PARAMS off opendbc's car.CarControl.HUDControl.AudibleAlert (matching
@@ -71,3 +74,68 @@ class TestAlertVolume(OpenpilotTestCase):
     assert av.scale(AudibleAlert.engage) == 1.0
     av.load_param()
     assert abs(av.scale(AudibleAlert.engage) - 0.3) < 1e-9
+
+  def test_pending_stop_buffer_is_still_scaled(self):
+    # Regression test: get_sound_data's pending_stop branch used to set self.current_alert to
+    # AudibleAlert.none *inside* the fill loop, so the old `ret * self.current_volume *
+    # self.alert_volume.scale(self.current_alert)` evaluated the scale AFTER the mutation and
+    # returned 1.0 for the last (still audible) buffer of every looping alert. The scale must be
+    # snapshotted before the loop can touch current_alert, so every buffer -- including the one
+    # where the sound actually stops mid-fill -- is scaled consistently.
+    s_auto = Soundd()  # WarningSoftVolume unset -> automatic / unscaled reference
+    s_auto.current_volume = 1.0
+    s_auto.update_alert(AudibleAlert.warningSoft)
+
+    self.params.put("WarningSoftVolume", 0, block=True)
+    s_scaled = Soundd()
+    s_scaled.current_volume = 1.0
+    s_scaled.update_alert(AudibleAlert.warningSoft)
+
+    # Play enough buffers to get past one full loop of critical.wav (25714 frames / 4096 per
+    # buffer) so the alert has "played once" and a stop request becomes a pending_stop instead of
+    # an immediate cut.
+    for _ in range(8):
+      s_auto.get_sound_data(4096)
+      s_scaled.get_sound_data(4096)
+
+    s_auto.update_alert(AudibleAlert.none)
+    s_scaled.update_alert(AudibleAlert.none)
+    assert s_auto.pending_stop and s_scaled.pending_stop
+
+    # Pull buffers until the sound actually stops, checking every one along the way -- including
+    # the final buffer, where current_alert flips to `none` partway through the fill loop.
+    stopped = False
+    for _ in range(15):
+      auto_buf = s_auto.get_sound_data(4096)
+      scaled_buf = s_scaled.get_sound_data(4096)
+      assert abs(scaled_buf).max() <= WARNING_FLOOR / 100 * abs(auto_buf).max() + 1e-6
+      if s_auto.current_alert == AudibleAlert.none and s_scaled.current_alert == AudibleAlert.none:
+        stopped = True
+        break
+    assert stopped, "warningSoft sound never stopped"
+
+  def test_pending_stop_buffer_is_muted_when_zero(self):
+    # Companion to the floor regression above: promptDistracted has no floor, so a 0 %
+    # volume must mute it completely, including the final buffer where the sound stops.
+    self.params.put("PromptDistractedVolume", 0, block=True)
+    s = Soundd()
+    s.current_volume = 1.0
+    s.update_alert(AudibleAlert.promptDistracted)
+
+    # Play past one full loop of dm_warning.wav (36000 frames / 4096 per buffer).
+    for _ in range(10):
+      assert np.all(s.get_sound_data(4096) == 0.0)
+
+    s.update_alert(AudibleAlert.none)
+    assert s.pending_stop
+
+    final_buf = None
+    stopped = False
+    for _ in range(15):
+      final_buf = s.get_sound_data(4096)
+      assert np.all(final_buf == 0.0)
+      if s.current_alert == AudibleAlert.none:
+        stopped = True
+        break
+    assert stopped, "promptDistracted sound never stopped"
+    assert np.all(final_buf == 0.0)

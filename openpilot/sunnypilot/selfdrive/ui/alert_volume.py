@@ -1,4 +1,9 @@
 """
+Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
+
+This file is part of sunnypilot and is licensed under the MIT License.
+See the LICENSE.md file in the root directory for more details.
+
 Per-category alert volume scaling for soundd.
 
 Each alert category has a param holding 0..100 (percent) or 101 (automatic, the stock
@@ -38,7 +43,10 @@ class AlertVolume:
 
   def read_params(self) -> None:
     for alert, key in VOLUME_PARAMS.items():
-      self.levels[alert] = int(self.params.get(key, return_default=True))
+      try:
+        self.levels[alert] = int(self.params.get(key, return_default=True))
+      except (ValueError, TypeError):
+        self.levels[alert] = AUTO
 
   def load_param(self) -> None:
     self._frame += 1
