@@ -200,6 +200,23 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"MadsSteeringMode", {PERSISTENT | BACKUP, INT, "0"}},
     {"MadsUnifiedEngagementMode", {PERSISTENT | BACKUP, BOOL, "1"}},
 
+    // sunnypilot: Theo's 2017 Accord Hybrid port, version-one features
+    {"HondaLowSpeedPedal", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"EngageVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"DisengageVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"PromptVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"PromptDistractedVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"RefuseVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"WarningSoftVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"WarningImmediateVolume", {PERSISTENT | BACKUP, INT, "101"}},
+    {"CustomPersonalities", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"AggressiveFollow", {PERSISTENT | BACKUP, FLOAT, "1.25"}},
+    {"StandardFollow", {PERSISTENT | BACKUP, FLOAT, "1.45"}},
+    {"RelaxedFollow", {PERSISTENT | BACKUP, FLOAT, "1.75"}},
+    {"AggressiveJerk", {PERSISTENT | BACKUP, FLOAT, "0.5"}},
+    {"StandardJerk", {PERSISTENT | BACKUP, FLOAT, "1.0"}},
+    {"RelaxedJerk", {PERSISTENT | BACKUP, FLOAT, "1.0"}},
+
     // Model Manager params
     {"ModelManager_ActiveBundle", {PERSISTENT, JSON}},
     {"ModelManager_ActiveBundleUSBGPU", {PERSISTENT, JSON}}, //TODO-SP: kept for migration, remove on next sync?

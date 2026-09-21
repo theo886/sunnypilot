@@ -138,4 +138,9 @@ def initialize_params(params) -> list[dict[str, Any]]:
     "ToyotaStopAndGoHack",
   ])
 
+  # honda
+  keys.extend([
+    "HondaLowSpeedPedal",
+  ])
+
   return [{k: params.get(k, return_default=True)} for k in keys]
