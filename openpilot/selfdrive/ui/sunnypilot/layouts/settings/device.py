@@ -18,6 +18,15 @@ from openpilot.system.ui.widgets.confirm_dialog import alert_dialog, ConfirmDial
 from openpilot.system.ui.widgets.list_view import text_item
 from openpilot.system.ui.widgets.scroller_tici import LineSeparator
 
+
+def _volume_label(value: int) -> str:
+  if value >= 101:
+    return "Auto"
+  if value == 0:
+    return "Muted"
+  return f"{value}%"
+
+
 offroad_time_options = {
   0: 0,
   1: 5,
@@ -86,6 +95,20 @@ class DeviceLayoutSP(DeviceLayout):
     )
     self._quiet_mode_and_dcam.action_item.right_button.set_button_style(ButtonStyle.NORMAL)
 
+    self._alert_volumes = [
+      option_item_sp(title=lambda t=title: tr(t), param=key, min_value=0, max_value=101, value_change_step=1,
+                     label_callback=_volume_label, inline=True)
+      for title, key in (
+        ("Engage Chime Volume", "EngageVolume"),
+        ("Disengage Chime Volume", "DisengageVolume"),
+        ("Prompt Volume", "PromptVolume"),
+        ("Distracted Prompt Volume", "PromptDistractedVolume"),
+        ("Refuse Chime Volume", "RefuseVolume"),
+        ("Soft Warning Volume (min 25%)", "WarningSoftVolume"),
+        ("Immediate Warning Volume (min 25%)", "WarningImmediateVolume"),
+      )
+    ]
+
     self._reg_and_training = dual_button_item_sp(
       left_text=lambda: tr("Regulatory"),
       left_callback=self._on_regulatory,
@@ -124,6 +147,7 @@ class DeviceLayoutSP(DeviceLayout):
       self._max_time_offroad,
       LineSeparator(height=10),
       self._quiet_mode_and_dcam,
+      *self._alert_volumes,
       self._reg_and_training,
       self._onroad_uploads_and_reset_settings,
       Spacer(10),

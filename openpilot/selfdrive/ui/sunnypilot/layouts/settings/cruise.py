@@ -76,6 +76,28 @@ class CruiseLayout(Widget):
       min_value=1, max_value=3, value_change_step=1,
       inline=True)
 
+    self.custom_personalities_toggle = toggle_item_sp(
+      title=tr("Custom Driving Personalities"),
+      description=tr("Replace the built-in follow time (seconds) and jerk factor of each driving personality. Defaults equal the built-in values."),
+      param="CustomPersonalities")
+
+    def _follow_item(title, key):
+      return option_item_sp(title=lambda: tr(title), param=key, min_value=100, max_value=300, value_change_step=5,
+                            use_float_scaling=True, label_callback=lambda x: f"{x / 100:.2f} s", inline=True)
+
+    def _jerk_item(title, key):
+      return option_item_sp(title=lambda: tr(title), param=key, min_value=10, max_value=200, value_change_step=10,
+                            use_float_scaling=True, label_callback=lambda x: f"{x / 100:.1f}", inline=True)
+
+    self.custom_personality_items = [
+      _follow_item("Aggressive Follow Time", "AggressiveFollow"),
+      _follow_item("Standard Follow Time", "StandardFollow"),
+      _follow_item("Relaxed Follow Time", "RelaxedFollow"),
+      _jerk_item("Aggressive Jerk Factor", "AggressiveJerk"),
+      _jerk_item("Standard Jerk Factor", "StandardJerk"),
+      _jerk_item("Relaxed Jerk Factor", "RelaxedJerk"),
+    ]
+
     self.sla_settings_button = simple_button_item_sp(
       button_text=lambda: tr("Speed Limit"),
       button_width=800,
@@ -95,6 +117,8 @@ class CruiseLayout(Widget):
       self.custom_acc_toggle,
       self.custom_acc_short_increment,
       self.custom_acc_long_increment,
+      self.custom_personalities_toggle,
+      *self.custom_personality_items,
       self.sla_settings_button,
     ]
     return items
@@ -147,6 +171,7 @@ class CruiseLayout(Widget):
         self.dec_toggle.action_item.set_enabled(has_long)
         self.scc_v_toggle.action_item.set_enabled(True)
         self.scc_m_toggle.action_item.set_enabled(True)
+        self.custom_personalities_toggle.action_item.set_enabled(has_long)
       else:
         ui_state.params.remove("CustomAccIncrementsEnabled")
         ui_state.params.remove("DynamicExperimentalControl")
@@ -156,6 +181,7 @@ class CruiseLayout(Widget):
         self.dec_toggle.action_item.set_enabled(False)
         self.scc_v_toggle.action_item.set_enabled(False)
         self.scc_m_toggle.action_item.set_enabled(False)
+        self.custom_personalities_toggle.action_item.set_enabled(False)
 
     else:
       has_icbm = has_long = False
