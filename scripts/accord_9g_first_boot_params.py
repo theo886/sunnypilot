@@ -22,11 +22,13 @@ def main() -> None:
   p.put_bool("HondaLowSpeedPedal", False, block=True)      # turn on only after the empty-lot test
   p.put_bool("CustomPersonalities", False, block=True)     # defaults equal stock; enable when wanted
   p.put_bool("QuietMode", False, block=True)
-  for key in ("EngageVolume", "DisengageVolume", "PromptVolume", "PromptDistractedVolume",
-              "RefuseVolume", "WarningSoftVolume", "WarningImmediateVolume"):
+  volume_keys = ("EngageVolume", "DisengageVolume", "PromptVolume", "PromptDistractedVolume",
+                 "RefuseVolume", "WarningSoftVolume", "WarningImmediateVolume")
+  for key in volume_keys:
     p.put(key, 101, block=True)                            # automatic
   print("accord 9g params set:")
-  for key in ("LongitudinalPersonality", "DisengageOnAccelerator", "Mads", "HondaLowSpeedPedal", "CustomPersonalities", "QuietMode"):
+  for key in ("LongitudinalPersonality", "DisengageOnAccelerator", "Mads", "HondaLowSpeedPedal",
+              "CustomPersonalities", "QuietMode") + volume_keys:
     print(f"  {key} = {p.get(key, return_default=True)!r}")
 
 

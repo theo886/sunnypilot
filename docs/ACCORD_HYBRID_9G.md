@@ -22,7 +22,7 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
 - **`STEER_THRESHOLD` 30 is crossed 47 % of driving time** in the 3X logs, so `steeringPressed` will be noisy. Re-derive it together with the steer ratio (13.66 static vs 18.42 learned) after an engaged drive.
 - **Panda safety on the car:** `hondaNidec`, param 4 (`NIDEC_ALT`), sunnypilot param 3 (`NIDEC_HYBRID | GAS_INTERCEPTOR`). Do NOT carry over the 3X's param 20.
 - **The inherited replay test `test_panda_safety_tx_cases` is skipped for every Honda hybrid** because of a test-harness flag collision (`ToyotaFlags.SECOC` == `HondaFlags.HYBRID` == 2048). TX limits are covered instead by the dedicated `TestHondaNidecAltHybridGasInterceptorSafety` class.
-- **Volume params:** 0..100 is a percentage, 101 is automatic. The two warning categories never go below 25 % (the device panel shows 25 % for any lower stored value). sunnypilot's `promptSingleLow` / `promptSingleHigh` sounds are not mapped to any volume param and always play at automatic volume.
+- **Volume params:** 0..100 is a percentage, 101 is automatic. The two warning categories never go below 25 % (the device panel shows 25 % for any lower stored value). sunnypilot's `promptSingleLow` / `promptSingleHigh` sounds are not mapped to any volume param and always play at automatic volume. The comma four's Device panel does carry the seven volume rows, so the volumes can be set on screen; only the Vehicle and Cruise panels are absent, which is why the pedal toggle and the personalities need sunnylink or SSH.
 - **`HondaLowSpeedPedal` only has an effect when the comma pedal is fingerprinted** (0x201 on bus 0). The matching sunnylink item is hidden unless the `gas_interceptor` capability is true.
 
 ## Install (first time)
@@ -68,7 +68,23 @@ Two checks do not pass on macOS arm64 and must be run on a Linux box or on the d
 ## Test ladder (spec section 8)
 
 1. Replay on the Mac: done in part 1 (`ACCORD_9G_RLOG=... pytest opendbc/car/honda/tests/test_accord_hybrid_9g_replay.py`).
-2. Bench, car parked, ignition on, nothing engaged: automatic fingerprint to HONDA_ACCORD_HYBRID_9G, no steer fault after the board boots, pedal detected, `pandaStates` safety model hondaNidec with param 4 and sunnypilot param 3. Check with `ssh comma@<ip> 'cat /data/params/d/CarParamsPersistent | strings | head'` and the on-screen alerts.
+2. Bench, car parked, ignition on, nothing engaged: automatic fingerprint to HONDA_ACCORD_HYBRID_9G, no steer fault after the board boots, pedal detected, `pandaStates` safety model hondaNidec with param 4 and sunnypilot param 3. Check the on-screen alerts, and read both CarParams structs back:
+
+   ```
+   ssh comma@<ip> "cd /data/openpilot && python3 -c \"
+   from openpilot.common.params import Params
+   from openpilot.cereal import custom, messaging
+   from opendbc.car.structs import car
+   p = Params()
+   CP = messaging.log_from_bytes(p.get('CarParamsPersistent'), car.CarParams)
+   CP_SP = messaging.log_from_bytes(p.get('CarParamsSPPersistent'), custom.CarParamsSP)
+   print(CP.carFingerprint, [(str(c.safetyModel), c.safetyParam) for c in CP.safetyConfigs], CP_SP.safetyParam)\""
+   ```
+
+   Expected: `HONDA_ACCORD_HYBRID_9G [('hondaNidec', 4)] 3`
+
+   The safety params are numeric capnp fields, so `strings` cannot show them, and the sunnypilot param
+   lives in `CarParamsSPPersistent`, not `CarParamsPersistent`.
 3. Empty lot, driver only: lateral at walking speed, then longitudinal, stop and pedal start with `HondaLowSpeedPedal` off then on. Trigger engage and disengage chimes for the volume feature. Save the routes.
 4. Road, normal use. Re-derive steer ratio and steering-pressed threshold from these logs (spec section 9).
 
