@@ -15,6 +15,7 @@ from openpilot.system import micd
 from openpilot.common.hardware import HARDWARE
 
 from openpilot.sunnypilot.selfdrive.ui.quiet_mode import QuietMode
+from openpilot.sunnypilot.selfdrive.ui.alert_volume import AlertVolume
 
 SAMPLE_RATE = 48000
 SAMPLE_BUFFER = 4096 # (approx 100ms)
@@ -74,6 +75,8 @@ class Soundd(QuietMode):
   def __init__(self):
     super().__init__()
 
+    self.alert_volume = AlertVolume()
+
     self.load_sounds()
 
     self.current_alert = AudibleAlert.none
@@ -128,7 +131,7 @@ class Soundd(QuietMode):
           self.pending_stop = False
           break
 
-    return ret * self.current_volume
+    return ret * self.current_volume * self.alert_volume.scale(self.current_alert)
 
   def callback(self, data_out: np.ndarray, frames: int, time, status) -> None:
     if status:
@@ -190,6 +193,7 @@ class Soundd(QuietMode):
         sm.update(0)
 
         self.load_param()
+        self.alert_volume.load_param()
 
         # freeze volume during alerts to avoid mic feedback increasing volume
         if sm.updated['soundPressure']:
