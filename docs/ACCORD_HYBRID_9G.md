@@ -22,7 +22,8 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
 - **`STEER_THRESHOLD` 30 is crossed 47 % of driving time** in the 3X logs, so `steeringPressed` will be noisy. Re-derive it together with the steer ratio (13.66 static vs 18.42 learned) after an engaged drive.
 - **Panda safety on the car:** `hondaNidec`, param 4 (`NIDEC_ALT`), sunnypilot param 3 (`NIDEC_HYBRID | GAS_INTERCEPTOR`). Do NOT carry over the 3X's param 20.
 - **The inherited replay test `test_panda_safety_tx_cases` is skipped for every Honda hybrid** because of a test-harness flag collision (`ToyotaFlags.SECOC` == `HondaFlags.HYBRID` == 2048). TX limits are covered instead by the dedicated `TestHondaNidecAltHybridGasInterceptorSafety` class.
-- **Volume params:** 0..100 is a percentage, 101 is automatic. The two warning categories never go below 25 % (the device panel shows 25 % for any lower stored value). sunnypilot's `promptSingleLow` / `promptSingleHigh` sounds are not mapped to any volume param and always play at automatic volume. The comma four's Device panel does carry the seven volume rows, so the volumes can be set on screen; only the Vehicle and Cruise panels are absent, which is why the pedal toggle and the personalities need sunnylink or SSH.
+- **Volume params:** 0..100 is a percentage, 101 is automatic. The two warning categories never go below 25 % (the 3X device panel shows 25 % for any lower stored value). sunnypilot's `promptSingleLow` / `promptSingleHigh` sounds are not mapped to any volume param and always play at automatic volume.
+- **None of the new settings are on screen on the comma four.** The comma four runs the mici UI (`openpilot/selfdrive/ui/ui.py:13` and `:22-25`: `big_ui()` is true only for `tici`/`tizi`, so the comma four takes `MiciMainLayout`), and its settings panel builds the *upstream* `DeviceLayoutMici` (`openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py:9,36-37`), which has no volume rows and no QuietMode button. The mici UI also has no Vehicle and no Cruise panel. So the seven volume rows, QuietMode, the Honda pedal toggle and the custom-personalities rows added on this branch live in the 3X UI (`openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py`, `.../settings/cruise.py`, `.../settings/vehicle/brands/honda.py`) and are visible only on a comma 3X or upstream. On the comma four every one of these settings, QuietMode included, is set via sunnylink or SSH.
 - **`HondaLowSpeedPedal` only has an effect when the comma pedal is fingerprinted** (0x201 on bus 0). The matching sunnylink item is hidden unless the `gas_interceptor` capability is true.
 
 ## Install (first time)
@@ -34,10 +35,17 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
     ssh comma@<comma-four-ip>
     cd /data/openpilot
     git remote set-url origin https://github.com/theo886/sunnypilot.git
-    git fetch origin accord-hybrid-9g
+    git fetch --depth=50 origin accord-hybrid-9g:accord-hybrid-9g
     git checkout accord-hybrid-9g
     git submodule sync && git submodule update --init --recursive
     sudo reboot
+
+   The installer clones with `--depth=1 -b <branch>`
+   (`openpilot/selfdrive/ui/installer/installer.cc:138`), so `/data/openpilot` is a shallow,
+   single-branch clone. A plain `git fetch origin accord-hybrid-9g` only moves `FETCH_HEAD` and the
+   following `git checkout accord-hybrid-9g` fails with "pathspec did not match". The explicit
+   `<remote>:<local>` refspec above creates the local branch, and `--depth=50` keeps the fetch small
+   while giving the submodule pin some history to resolve against.
 
 4. The first boot compiles the branch on the device (10 to 20 minutes, screen shows the build). Then:
 
@@ -45,7 +53,10 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
 
 ## Setting params without a panel (comma four)
 
-The comma four UI has no Vehicle or Cruise panel. Use sunnylink (Settings, sunnylink, pair) or SSH:
+The comma four's mici UI renders none of these controls: no Vehicle panel, no Cruise panel, and a Device
+panel that is the upstream one (no volume rows, no QuietMode button). Every setting below — the pedal
+toggle, the personalities, QuietMode and all seven volume keys alike — is set via sunnylink
+(Settings, sunnylink, pair) or SSH:
 
     cd /data/openpilot && python3 -c "from openpilot.common.params import Params; Params().put_bool('HondaLowSpeedPedal', True)"
 
@@ -62,8 +73,24 @@ Two checks do not pass on macOS arm64 and must be run on a Linux box or on the d
 
 ## Rollback
 
-- Before the road test passes: unplug the comma four, plug the 3X back in. Nothing on the 3X changed.
-- On the comma four: `cd /data/openpilot && git checkout <known-good tag or sha> && sudo reboot`. The tag for each drive is written in the handoff note.
+- The real rollback, before the road test passes: unplug the comma four, plug the 3X back in. Nothing on the 3X changed.
+- On the comma four, back to plain sunnypilot:
+
+```
+cd /data/openpilot
+git fetch origin tag base-sunnypilot-a5f4465
+git checkout base-sunnypilot-a5f4465
+git submodule sync && git submodule update --init --recursive
+sudo reboot
+```
+
+  Both extra lines are load-bearing. The clone is single-branch (see Install step 3), so the tag is not
+  present locally and has to be fetched by name. And the base tag pins `opendbc_repo` at sunnypilot's
+  opendbc `f95f996`, while the working tree still holds the fork's opendbc `6c93525` until the submodule
+  is synced — without `git submodule sync && git submodule update --init --recursive` the checkout looks
+  like plain sunnypilot but still builds the Accord car port.
+- Rolling back to any other `<known-good tag or sha>` needs the same fetch-by-name and the same two
+  submodule lines. The tag for each drive is written in the handoff note.
 
 ## Test ladder (spec section 8)
 
