@@ -70,16 +70,16 @@ Two checks do not pass on macOS arm64 and must be run on a Linux box or on the d
 1. Replay on the Mac: done in part 1 (`ACCORD_9G_RLOG=... pytest opendbc/car/honda/tests/test_accord_hybrid_9g_replay.py`).
 2. Bench, car parked, ignition on, nothing engaged: automatic fingerprint to HONDA_ACCORD_HYBRID_9G, no steer fault after the board boots, pedal detected, `pandaStates` safety model hondaNidec with param 4 and sunnypilot param 3. Check the on-screen alerts, and read both CarParams structs back:
 
-   ```
-   ssh comma@<ip> "cd /data/openpilot && python3 -c \"
-   from openpilot.common.params import Params
-   from openpilot.cereal import custom, messaging
-   from opendbc.car.structs import car
-   p = Params()
-   CP = messaging.log_from_bytes(p.get('CarParamsPersistent'), car.CarParams)
-   CP_SP = messaging.log_from_bytes(p.get('CarParamsSPPersistent'), custom.CarParamsSP)
-   print(CP.carFingerprint, [(str(c.safetyModel), c.safetyParam) for c in CP.safetyConfigs], CP_SP.safetyParam)\""
-   ```
+```
+ssh comma@<ip> "cd /data/openpilot && python3 -c \"
+from openpilot.common.params import Params
+from openpilot.cereal import custom, messaging
+from opendbc.car.structs import car
+p = Params()
+CP = messaging.log_from_bytes(p.get('CarParamsPersistent'), car.CarParams)
+CP_SP = messaging.log_from_bytes(p.get('CarParamsSPPersistent'), custom.CarParamsSP)
+print(CP.carFingerprint, [(str(c.safetyModel), c.safetyParam) for c in CP.safetyConfigs], CP_SP.safetyParam)\""
+```
 
    Expected: `HONDA_ACCORD_HYBRID_9G [('hondaNidec', 4)] 3`
 
