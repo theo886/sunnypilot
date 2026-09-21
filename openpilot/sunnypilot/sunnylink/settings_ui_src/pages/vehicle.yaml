@@ -6,6 +6,21 @@ icon: vehicle
 order: 99
 kind: vehicle
 sections:
+- id: honda
+  title: Honda Settings
+  description: ''
+  items:
+  - key: HondaLowSpeedPedal
+    widget: toggle
+    title: Responsive Pedal at Low Speeds
+    description: Removes the stock 0.4x throttle reduction below 10 m/s when sunnypilot drives through a comma pedal.
+      Test in an empty lot before road use. Takes effect on the next drive.
+    visibility:
+    - type: capability
+      field: gas_interceptor
+      equals: true
+    enablement:
+    - $ref: '#/macros/offroad'
 - id: hyundai
   title: Hyundai / Kia / Genesis Settings
   description: ''

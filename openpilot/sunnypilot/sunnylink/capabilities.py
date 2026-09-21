@@ -42,6 +42,7 @@ CAPABILITY_FIELDS = (
   "device_type",
   "subaru_has_sng",
   "hyundai_alpha_long_available",
+  "gas_interceptor",
 )
 
 CAPABILITY_LABELS: dict[str, str] = {
@@ -64,6 +65,7 @@ CAPABILITY_LABELS: dict[str, str] = {
   "device_type": "Device type",
   "subaru_has_sng": "Subaru Stop-and-Go available",
   "hyundai_alpha_long_available": "Hyundai Alpha Longitudinal available",
+  "gas_interceptor": "comma pedal (gas interceptor) detected",
 }
 
 # Explicit defaults for non-boolean capability fields
@@ -174,6 +176,7 @@ def generate_capabilities(params: Params | None = None) -> dict:
       caps["icbm_available"] = bool(CP_SP.intelligentCruiseButtonManagementAvailable)
       caps["has_icbm"] = bool(CP_SP.intelligentCruiseButtonManagementAvailable) and params.get_bool("IntelligentCruiseButtonManagement")
       caps["tesla_has_vehicle_bus"] = bool(CP_SP.flags & TeslaFlagsSP.HAS_VEHICLE_BUS)
+      caps["gas_interceptor"] = bool(CP_SP.enableGasInterceptor)
     except Exception:
       cloudlog.exception("capabilities: failed to deserialize CarParamsSPPersistent")
 

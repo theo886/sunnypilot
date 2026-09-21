@@ -75,6 +75,10 @@ class TestOpaquePerBrandFlags(OpenpilotTestCase):
   def test_hyundai_alpha_long_available_default_false(self, caps):
     assert caps["hyundai_alpha_long_available"] is False
 
+  def test_gas_interceptor_default_false(self, caps):
+    assert "gas_interceptor" in CAPABILITY_FIELDS
+    assert caps["gas_interceptor"] is False
+
 
 class TestCapabilitiesShape(OpenpilotTestCase):
   def test_all_fields_present(self, caps):

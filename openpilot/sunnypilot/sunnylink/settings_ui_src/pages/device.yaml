@@ -27,6 +27,55 @@ sections:
   - key: QuietMode
     widget: toggle
     title: Quiet Mode
+  - key: EngageVolume
+    widget: option
+    title: Engage Chime Volume
+    description: 0 mutes, 1 to 100 is a fixed percentage, 101 is automatic (ambient-noise based).
+    min: 0
+    max: 101
+    step: 1
+  - key: DisengageVolume
+    widget: option
+    title: Disengage Chime Volume
+    description: 0 mutes, 1 to 100 is a fixed percentage, 101 is automatic.
+    min: 0
+    max: 101
+    step: 1
+  - key: PromptVolume
+    widget: option
+    title: Prompt Volume
+    description: 0 mutes, 1 to 100 is a fixed percentage, 101 is automatic.
+    min: 0
+    max: 101
+    step: 1
+  - key: PromptDistractedVolume
+    widget: option
+    title: Distracted Prompt Volume
+    description: 0 mutes, 1 to 100 is a fixed percentage, 101 is automatic.
+    min: 0
+    max: 101
+    step: 1
+  - key: RefuseVolume
+    widget: option
+    title: Refuse Chime Volume
+    description: 0 mutes, 1 to 100 is a fixed percentage, 101 is automatic.
+    min: 0
+    max: 101
+    step: 1
+  - key: WarningSoftVolume
+    widget: option
+    title: Soft Warning Volume
+    description: Never below 25 percent. 101 is automatic.
+    min: 0
+    max: 101
+    step: 1
+  - key: WarningImmediateVolume
+    widget: option
+    title: Immediate Warning Volume
+    description: Never below 25 percent. 101 is automatic.
+    min: 0
+    max: 101
+    step: 1
   - key: OnroadUploads
     widget: toggle
     title: Onroad Uploads
