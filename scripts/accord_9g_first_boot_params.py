@@ -3,7 +3,11 @@
 One-time settings for Theo's 2017 Accord Hybrid on the comma four.
 Run on the device over SSH after the first boot of the accord-hybrid-9g branch, before the first drive:
 
-  cd /data/openpilot && python3 scripts/accord_9g_first_boot_params.py
+  ssh comma@<ip> 'cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 scripts/accord_9g_first_boot_params.py'
+
+A one-shot `ssh comma@<ip> '...'` is not a login shell, so plain python3 is /usr/bin/python3 without
+openpilot's venv, and /data/openpilot is not on the import path. Inside an interactive SSH session plain
+`python3 scripts/accord_9g_first_boot_params.py` works. See docs/ACCORD_HYBRID_9G.md, Install step 4.
 
 Every value here reproduces the comma 3X's behaviour or keeps a new feature off until it has been tested.
 

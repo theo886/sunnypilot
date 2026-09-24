@@ -28,8 +28,17 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
 
 ## Install (first time)
 
-1. On the comma four, at setup choose Custom Software and enter the install URL for sunnypilot's `master-dev` branch from the Installation page at https://community.sunnypilot.ai/docs (do not guess the URL). This flashes AGNOS 19.7 and, on first car connection, the comma four's built-in panda with sunnypilot's stock panda firmware. The 3X and its panda are untouched.
-2. Enable SSH in Settings and add GitHub user `theo886`.
+1. On the comma four, at setup choose Custom Software and enter `install.sunnypilot.ai/master-dev`
+   (used on 2026-09-24, when sunnypilot `master-dev` was `a5f4465`, the base of this branch). This flashes
+   AGNOS 19.7 and, on first car connection, the comma four's built-in panda with sunnypilot's stock panda
+   firmware. The 3X and its panda are untouched.
+   The comma four URLs on sunnypilot's Recommended Branch Installations page (`install.sunnypilot.ai/release-mici`,
+   `dev.sunnypilot.ai`, `staging.sunnypilot.ai`) install prebuilt branches: flattened, with no submodules, so
+   switching from them to this branch is messier. `master-dev` is not on that page, and the install server
+   answers for any branch name, so a typo is not caught until the device tries to clone.
+2. Settings, developer: turn SSH on and set SSH keys to GitHub user `theo886`. The IP address is under
+   Settings, network, below the Wi-Fi name on the Wi-Fi button (the developer panel does not show it).
+   SSH listens on port 22.
 3. From the Mac:
 
     ssh comma@<comma-four-ip>
@@ -47,18 +56,33 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
    `<remote>:<local>` refspec above creates the local branch, and `--depth=50` keeps the fetch small
    while giving the submodule pin some history to resolve against.
 
-4. The first boot compiles the branch on the device (10 to 20 minutes, screen shows the build). Then:
+4. The reboot compiles the branch on the device; the screen shows the build. On 2026-09-24 this took about
+   2 minutes, because the `master-dev` install had already done the full build and this branch only changes a
+   few files on top of it. A device that never finished the `master-dev` build takes 10 to 20 minutes. Then:
 
-    ssh comma@<comma-four-ip> 'cd /data/openpilot && python3 scripts/accord_9g_first_boot_params.py'
+    ssh comma@<comma-four-ip> 'cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 scripts/accord_9g_first_boot_params.py'
+
+   **Every one-shot `ssh comma@<ip> '<command>'` that runs Python needs that
+   `PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3` prefix.** A one-shot SSH command is not a login
+   shell, so `/etc/profile` does not run: plain `python3` is then `/usr/bin/python3`, which has no openpilot
+   dependencies (`ModuleNotFoundError: No module named 'zmq'`), and nothing puts `/data/openpilot` on the
+   import path (`No module named 'openpilot'`). The launch script sets both for openpilot itself
+   (`launch_chffrplus.sh`: `export PYTHONPATH="$PWD"`, venv `/usr/local/venv`). In an interactive session
+   (`ssh comma@<ip>`, then typing commands) `/etc/profile` activates the venv and sets
+   `PYTHONPATH=/data/pythonpath`, so plain `python3` works there.
 
 ## Setting params without a panel (comma four)
 
 The comma four's mici UI renders none of these controls: no Vehicle panel, no Cruise panel, and a Device
 panel that is the upstream one (no volume rows, no QuietMode button). Every setting below — the pedal
 toggle, the personalities, QuietMode and all seven volume keys alike — is set via sunnylink
-(Settings, sunnylink, pair) or SSH:
+(Settings, sunnylink, pair) or SSH. From the Mac:
 
-    cd /data/openpilot && python3 -c "from openpilot.common.params import Params; Params().put_bool('HondaLowSpeedPedal', True)"
+    ssh comma@<comma-four-ip> "cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 -c \"from openpilot.common.params import Params; Params().put_bool('HondaLowSpeedPedal', True, block=True)\""
+
+Or inside an interactive `ssh comma@<comma-four-ip>` session, where plain `python3` works (Install step 4):
+
+    cd /data/openpilot && python3 -c "from openpilot.common.params import Params; Params().put_bool('HondaLowSpeedPedal', True, block=True)"
 
 Bool keys: HondaLowSpeedPedal, CustomPersonalities, QuietMode, Mads, DisengageOnAccelerator.
 Int keys: LongitudinalPersonality (0 aggressive, 1 standard, 2 relaxed), the seven *Volume keys (0..101).
@@ -98,7 +122,7 @@ sudo reboot
 2. Bench, car parked, ignition on, nothing engaged: automatic fingerprint to HONDA_ACCORD_HYBRID_9G, no steer fault after the board boots, pedal detected, `pandaStates` safety model hondaNidec with param 4 and sunnypilot param 3. Check the on-screen alerts, and read both CarParams structs back:
 
 ```
-ssh comma@<ip> "cd /data/openpilot && python3 -c \"
+ssh comma@<ip> "cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 -c \"
 from openpilot.common.params import Params
 from openpilot.cereal import custom, messaging
 from opendbc.car.structs import car
