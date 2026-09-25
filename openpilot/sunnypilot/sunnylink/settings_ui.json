@@ -1163,6 +1163,19 @@
                   "equals": true
                 }
               ]
+            },
+            {
+              "key": "TrafficModeButton",
+              "widget": "toggle",
+              "title": "Traffic Mode on Distance Hold",
+              "description": "Holding the distance button toggles Traffic Mode instead of Experimental Mode. Traffic Mode follows closer near a stop (0.5 s, rising to 1.0 s by 11 mph) with smoother speed changes, and turns off when openpilot disengages.",
+              "enablement": [
+                {
+                  "type": "capability",
+                  "field": "has_longitudinal_control",
+                  "equals": true
+                }
+              ]
             }
           ]
         }

@@ -512,7 +512,7 @@ class SelfdriveD(CruiseHelper):
     if CS.gearShifter == car.CarState.GearShifter.park and self.mads.enabled:
       self.events.remove(EventName.canBusMissing)
 
-    CruiseHelper.update(self, CS, self.events_sp, self.experimental_mode)
+    CruiseHelper.update(self, CS, self.events_sp, self.experimental_mode, enabled=self.enabled)
 
     # decrement personality on distance button press
     if self.CP.openpilotLongitudinalControl:
@@ -633,6 +633,8 @@ class SelfdriveD(CruiseHelper):
     icbm.state = self.icbm.state
     icbm.sendButton = self.icbm.cruise_button
     icbm.vTarget = self.icbm.v_target
+
+    ss_sp.trafficMode = self.traffic_mode
 
     self.button_state_tracker.publish(ss_sp)
 

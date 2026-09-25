@@ -216,6 +216,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"AggressiveJerk", {PERSISTENT | BACKUP, FLOAT, "0.5"}},
     {"StandardJerk", {PERSISTENT | BACKUP, FLOAT, "1.0"}},
     {"RelaxedJerk", {PERSISTENT | BACKUP, FLOAT, "1.0"}},
+    {"TrafficModeButton", {PERSISTENT | BACKUP, BOOL, "0"}},
 
     // Model Manager params
     {"ModelManager_ActiveBundle", {PERSISTENT, JSON}},

@@ -27,6 +27,7 @@ class TestAccord9GParams(OpenpilotTestCase):
     p = Params()
     assert p.get_bool("HondaLowSpeedPedal") is False
     assert p.get_bool("CustomPersonalities") is False
+    assert p.get_bool("TrafficModeButton") is False
 
   def test_honda_low_speed_pedal_reaches_opendbc(self):
     p = Params()

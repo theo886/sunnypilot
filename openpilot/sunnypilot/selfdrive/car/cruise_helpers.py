@@ -14,6 +14,7 @@ ButtonType = car.CarState.ButtonEvent.Type
 EventNameSP = custom.OnroadEventSP.EventName
 
 DISTANCE_LONG_PRESS = 50
+TRAFFIC_PARAM_REFRESH = 50  # frames at 100 Hz
 
 
 class CruiseHelper:
@@ -25,13 +26,28 @@ class CruiseHelper:
     self._experimental_mode = False
     self.experimental_mode_switched = False
 
-  def update(self, CS, events, experimental_mode) -> None:
+    # Traffic mode: opt-in, repurposes the distance-button hold. Not persisted; off at every start.
+    self.traffic_mode_button = self.params.get_bool("TrafficModeButton")
+    self.traffic_mode = False
+    self._frame = 0
+
+  def update(self, CS, events, experimental_mode, enabled: bool = True) -> None:
+    self._frame += 1
+    if self._frame % TRAFFIC_PARAM_REFRESH == 0:
+      self.traffic_mode_button = self.params.get_bool("TrafficModeButton")
+    if not self.traffic_mode_button or not enabled:
+      self.traffic_mode = False
+
     if self.CP.openpilotLongitudinalControl:
       if CS.cruiseState.available:
         self.update_button_frame_counts(CS)
 
-        # toggle experimental mode once on distance button hold
-        self.update_experimental_mode(events, experimental_mode)
+        if self.traffic_mode_button:
+          # toggle traffic mode once on distance button hold, only while engaged
+          self.update_traffic_mode(events, enabled)
+        else:
+          # toggle experimental mode once on distance button hold
+          self.update_experimental_mode(events, experimental_mode)
 
   def update_button_frame_counts(self, CS) -> None:
     for button in self.button_frame_counts:
@@ -49,3 +65,11 @@ class CruiseHelper:
       self.params.put_bool("ExperimentalMode", self._experimental_mode)
       events.add(EventNameSP.experimentalModeSwitched)
       self.experimental_mode_switched = True
+
+  def update_traffic_mode(self, events, enabled: bool) -> None:
+    if self.button_frame_counts[ButtonType.gapAdjustCruise] >= DISTANCE_LONG_PRESS and not self.experimental_mode_switched:
+      # the latch is shared with the experimental toggle: selfdrived uses it to skip the personality change on release
+      self.experimental_mode_switched = True
+      if enabled:
+        self.traffic_mode = not self.traffic_mode
+        events.add(EventNameSP.trafficModeOn if self.traffic_mode else EventNameSP.trafficModeOff)

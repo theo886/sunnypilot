@@ -342,3 +342,11 @@ sections:
     - type: param
       key: CustomPersonalities
       equals: true
+  - key: TrafficModeButton
+    widget: toggle
+    title: Traffic Mode on Distance Hold
+    description: Holding the distance button toggles Traffic Mode instead of Experimental Mode. Traffic Mode follows
+      closer near a stop (0.5 s, rising to 1.0 s by 11 mph) with smoother speed changes, and turns off when openpilot
+      disengages.
+    enablement:
+    - $ref: '#/macros/longitudinal'
