@@ -1168,7 +1168,7 @@
               "key": "TrafficModeButton",
               "widget": "toggle",
               "title": "Traffic Mode on Distance Hold",
-              "description": "Holding the distance button toggles Traffic Mode instead of Experimental Mode. Traffic Mode follows closer near a stop (0.5 s, rising to 1.0 s by 11 mph) with smoother speed changes, and turns off when openpilot disengages.",
+              "description": "Holding the distance button toggles Traffic Mode instead of Experimental Mode. Traffic Mode follows closer near a stop (0.5 s, rising to 1.0 s by 11 mph) and uses the aggressive personality's jerk weighting, so the car responds more quickly when speeding up and slowing down. It turns off when openpilot disengages.",
               "enablement": [
                 {
                   "type": "capability",

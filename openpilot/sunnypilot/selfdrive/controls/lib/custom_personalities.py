@@ -28,7 +28,8 @@ JERK_KEYS: dict[int, str] = {
 T_FOLLOW_MIN, T_FOLLOW_MAX = 1.0, 3.0
 JERK_MIN, JERK_MAX = 0.1, 2.0
 
-# Traffic mode (FrogPilot frogpilot_following.py:8-14): short gap near a stop, smooth speed changes.
+# Traffic mode (FrogPilot frogpilot_following.py:8-14): short gap near a stop, and TRAFFIC_JERK 0.5, the aggressive
+# personality's jerk factor, which halves the MPC's accel-change and jerk costs so the car responds more quickly.
 # Its own floor, below T_FOLLOW_MIN, applies only while traffic mode is on (Theo, 2026-09-24).
 TRAFFIC_T_FOLLOW_BP = [0.0, 5.0]  # m/s
 TRAFFIC_T_FOLLOW_V = [0.5, 1.0]   # s

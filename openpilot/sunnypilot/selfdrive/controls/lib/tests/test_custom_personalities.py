@@ -212,8 +212,6 @@ class TestCustomPersonalitiesInPlanner(OpenpilotTestCase):
     orig_update = plant.planner.update
 
     def update_with_traffic(sm):
-      # Plant.step builds sm as a plain dict with no selfdriveStateSP entry; add one for this frame.
-      sm['selfdriveStateSP'] = messaging.new_message('selfdriveStateSP').selfdriveStateSP
       sm['selfdriveStateSP'].trafficMode = True
       return orig_update(sm)
 
@@ -221,12 +219,20 @@ class TestCustomPersonalitiesInPlanner(OpenpilotTestCase):
          mock.patch.object(plant.planner.mpc, "set_weights") as set_weights, \
          mock.patch.object(plant.planner.mpc, "update") as update:
       plant.step(v_lead=speed)
-    return set_weights.call_args.kwargs, update.call_args.kwargs
+    return set_weights.call_args.kwargs, update.call_args.kwargs, plant.planner.v_desired_filter.x
 
   def test_planner_passes_traffic_values(self):
-    weights_kwargs, update_kwargs = self._planner_kwargs_traffic(speed=0.0)
+    weights_kwargs, update_kwargs, _ = self._planner_kwargs_traffic(speed=0.0)
     assert weights_kwargs["jerk_factor"] == 0.5
     assert abs(update_kwargs["t_follow"] - 0.5) < 0.05  # v_desired_filter may be a hair above 0
+
+  def test_planner_passes_traffic_values_at_speed(self):
+    # Plant builds the planner with init_v=speed, so v_desired_filter starts at 10 m/s and a 10 m/s v_ego keeps it
+    # there. The planner must hand get_t_follow that speed: without v_ego it would interpolate at 0 and return 0.5.
+    weights_kwargs, update_kwargs, v_filter = self._planner_kwargs_traffic(speed=10.0)
+    assert abs(v_filter - 10.0) < 0.1
+    assert weights_kwargs["jerk_factor"] == 0.5
+    assert abs(update_kwargs["t_follow"] - 1.0) < 1e-6
 
   def test_planner_traffic_off_unchanged(self):
     weights_kwargs, update_kwargs = self._planner_kwargs()

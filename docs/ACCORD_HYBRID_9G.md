@@ -9,7 +9,7 @@ Base: sunnypilot master-dev a5f4465 (openpilot 0.11.2, AGNOS 19.7). Panda: sunny
 - `HondaLowSpeedPedal` (off): removes the 0.4x throttle reduction below 10 m/s. Empty-lot test first.
 - `EngageVolume` ... `WarningImmediateVolume` (101 = automatic): per-category chime volume, warnings never below 25%.
 - `CustomPersonalities` (off) with `AggressiveFollow/StandardFollow/RelaxedFollow` (s) and `AggressiveJerk/StandardJerk/RelaxedJerk`.
-- `TrafficModeButton` (off): holding the distance button for 0.5 s while engaged toggles traffic mode instead of Experimental mode. Traffic mode follows at 0.5 s at a standstill, rising to 1.0 s at 5 m/s (11 mph), with jerk factor 0.5. It turns off at every disengage and restart. Details under "Setting params without a panel".
+- `TrafficModeButton` (off): holding the distance button for 0.5 s while engaged toggles traffic mode instead of Experimental mode. Traffic mode uses a 0.5 s follow time near a stop, rising to 1.0 s by 5 m/s (11 mph); the stopped gap stays 6 m. Its jerk factor is 0.5, the aggressive personality's jerk weighting, so the car responds more quickly when speeding up and slowing down. It turns off at every disengage and restart. Details under "Setting params without a panel".
 
 ## Known facts from the log replay (part 1)
 
@@ -89,11 +89,13 @@ Bool keys: HondaLowSpeedPedal, CustomPersonalities, TrafficModeButton, QuietMode
 Int keys: LongitudinalPersonality (0 aggressive, 1 standard, 2 relaxed), the seven *Volume keys (0..101).
 Float keys: AggressiveFollow, StandardFollow, RelaxedFollow (1.0..3.0), AggressiveJerk, StandardJerk, RelaxedJerk (0.1..2.0).
 
-**Traffic mode** is for stop-and-go traffic. While it is on, the follow time is 0.5 s at a standstill,
-rising linearly to 1.0 s at 5 m/s (11 mph) and staying at 1.0 s above that, and the jerk factor is 0.5, for
-smoother speed changes. These values replace the personality's, whichever personality is selected and
-whether or not `CustomPersonalities` is on. The stopped gap itself does not change: at a standstill the planner's
-target gap is `STOP_DISTANCE` (6 m) whatever the follow time, so the difference shows at creeping speeds.
+**Traffic mode** is for stop-and-go traffic. While it is on, the follow time is 0.5 s near a stop,
+rising linearly to 1.0 s at 5 m/s (11 mph) and staying at 1.0 s above that. The jerk factor is 0.5, the
+aggressive personality's jerk weighting: it halves the planner's penalties on changes in acceleration and on
+jerk, so the car responds more quickly when speeding up and slowing down. These values replace the
+personality's, whichever personality is selected and whether or not `CustomPersonalities` is on. The stopped
+gap itself does not change: at a standstill the planner's target gap is `STOP_DISTANCE` (6 m) whatever the
+follow time, so the difference shows at creeping speeds.
 
 `TrafficModeButton` does not turn traffic mode on; it changes what the distance-button hold does. Turn it on
 in sunnylink (Cruise, Custom Driving Personalities, "Traffic Mode on Distance Hold") or over SSH:
@@ -101,10 +103,10 @@ in sunnylink (Cruise, Custom Driving Personalities, "Traffic Mode on Distance Ho
     ssh comma@<comma-four-ip> "cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 -c \"from openpilot.common.params import Params; Params().put_bool('TrafficModeButton', True, block=True)\""
 
 With it on, holding the distance button for 0.5 s while openpilot is engaged toggles traffic mode. The hold
-no longer toggles Experimental mode, so toggle Experimental mode in sunnylink instead. Keep Experimental
-mode off when using traffic mode: the traffic follow time and jerk still reach the planner, but Experimental
-driving still limits acceleration, so the effect is smaller. Holding the button while not engaged toggles
-nothing. A short press still changes the personality.
+no longer toggles Experimental mode, so toggle Experimental mode in the comma four's Settings or sunnylink.
+Keep Experimental mode off when using traffic mode: the traffic follow time and jerk still reach the planner,
+but Experimental driving still limits acceleration, so the effect is smaller. Holding the button while not
+engaged toggles nothing. A short press still changes the personality.
 
 Traffic mode turns off silently at every disengage and every restart (each ignition included), and within
 0.5 s of `TrafficModeButton` being turned off. Re-engaging starts in normal mode. The only feedback on the
