@@ -25,6 +25,7 @@ def main() -> None:
   p.put_bool("Mads", False, block=True)                    # off until an engaged-drive log exists (spec section 10)
   p.put_bool("HondaLowSpeedPedal", False, block=True)      # turn on only after the empty-lot test
   p.put_bool("CustomPersonalities", False, block=True)     # defaults equal stock; enable when wanted
+  p.put_bool("TrafficModeButton", False, block=True)       # distance-button hold toggles Experimental until enabled
   p.put_bool("QuietMode", False, block=True)
   volume_keys = ("EngageVolume", "DisengageVolume", "PromptVolume", "PromptDistractedVolume",
                  "RefuseVolume", "WarningSoftVolume", "WarningImmediateVolume")
@@ -32,7 +33,7 @@ def main() -> None:
     p.put(key, 101, block=True)                            # automatic
   print("accord 9g params set:")
   for key in ("LongitudinalPersonality", "DisengageOnAccelerator", "Mads", "HondaLowSpeedPedal",
-              "CustomPersonalities", "QuietMode") + volume_keys:
+              "CustomPersonalities", "TrafficModeButton", "QuietMode") + volume_keys:
     print(f"  {key} = {p.get(key, return_default=True)!r}")
 
 

@@ -9,6 +9,7 @@ Base: sunnypilot master-dev a5f4465 (openpilot 0.11.2, AGNOS 19.7). Panda: sunny
 - `HondaLowSpeedPedal` (off): removes the 0.4x throttle reduction below 10 m/s. Empty-lot test first.
 - `EngageVolume` ... `WarningImmediateVolume` (101 = automatic): per-category chime volume, warnings never below 25%.
 - `CustomPersonalities` (off) with `AggressiveFollow/StandardFollow/RelaxedFollow` (s) and `AggressiveJerk/StandardJerk/RelaxedJerk`.
+- `TrafficModeButton` (off): holding the distance button for 0.5 s while engaged toggles traffic mode instead of Experimental mode. Traffic mode follows at 0.5 s at a standstill, rising to 1.0 s at 5 m/s (11 mph), with jerk factor 0.5. It turns off at every disengage and restart. Details under "Setting params without a panel".
 
 ## Known facts from the log replay (part 1)
 
@@ -75,7 +76,7 @@ These came out of replaying the 3X logs and out of the reviews. Read them before
 
 The comma four's mici UI renders none of these controls: no Vehicle panel, no Cruise panel, and a Device
 panel that is the upstream one (no volume rows, no QuietMode button). Every setting below — the pedal
-toggle, the personalities, QuietMode and all seven volume keys alike — is set via sunnylink
+toggle, the personalities, traffic mode, QuietMode and all seven volume keys alike — is set via sunnylink
 (Settings, sunnylink, pair) or SSH. From the Mac:
 
     ssh comma@<comma-four-ip> "cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 -c \"from openpilot.common.params import Params; Params().put_bool('HondaLowSpeedPedal', True, block=True)\""
@@ -84,9 +85,31 @@ Or inside an interactive `ssh comma@<comma-four-ip>` session, where plain `pytho
 
     cd /data/openpilot && python3 -c "from openpilot.common.params import Params; Params().put_bool('HondaLowSpeedPedal', True, block=True)"
 
-Bool keys: HondaLowSpeedPedal, CustomPersonalities, QuietMode, Mads, DisengageOnAccelerator.
+Bool keys: HondaLowSpeedPedal, CustomPersonalities, TrafficModeButton, QuietMode, Mads, DisengageOnAccelerator.
 Int keys: LongitudinalPersonality (0 aggressive, 1 standard, 2 relaxed), the seven *Volume keys (0..101).
 Float keys: AggressiveFollow, StandardFollow, RelaxedFollow (1.0..3.0), AggressiveJerk, StandardJerk, RelaxedJerk (0.1..2.0).
+
+**Traffic mode** is for stop-and-go traffic. While it is on, the follow time is 0.5 s at a standstill,
+rising linearly to 1.0 s at 5 m/s (11 mph) and staying at 1.0 s above that, and the jerk factor is 0.5, for
+smoother speed changes. These values replace the personality's, whichever personality is selected and
+whether or not `CustomPersonalities` is on. The stopped gap itself does not change: at a standstill the planner's
+target gap is `STOP_DISTANCE` (6 m) whatever the follow time, so the difference shows at creeping speeds.
+
+`TrafficModeButton` does not turn traffic mode on; it changes what the distance-button hold does. Turn it on
+in sunnylink (Cruise, Custom Driving Personalities, "Traffic Mode on Distance Hold") or over SSH:
+
+    ssh comma@<comma-four-ip> "cd /data/openpilot && PYTHONPATH=/data/openpilot /usr/local/venv/bin/python3 -c \"from openpilot.common.params import Params; Params().put_bool('TrafficModeButton', True, block=True)\""
+
+With it on, holding the distance button for 0.5 s while openpilot is engaged toggles traffic mode. The hold
+no longer toggles Experimental mode, so toggle Experimental mode in sunnylink instead. Keep Experimental
+mode off when using traffic mode: the traffic follow time and jerk still reach the planner, but Experimental
+driving still limits acceleration, so the effect is smaller. Holding the button while not engaged toggles
+nothing. A short press still changes the personality.
+
+Traffic mode turns off silently at every disengage and every restart (each ignition included), and within
+0.5 s of `TrafficModeButton` being turned off. Re-engaging starts in normal mode. The only feedback on the
+comma four is a 1.5 s alert, "Traffic Mode On" or "Traffic Mode Off"; nothing on screen shows that it is
+still on.
 
 ## Tests that cannot run on the Mac
 
@@ -94,6 +117,12 @@ Two checks do not pass on macOS arm64 and must be run on a Linux box or on the d
 
 - `openpilot/selfdrive/controls/tests/test_following_distance.py` fails on the Mac: the acados MPC does not converge on macOS arm64.
 - The custom-personalities steady-state simulation test skips for the same reason. Run `openpilot/sunnypilot/selfdrive/controls/lib/tests/test_custom_personalities.py` on Linux or on the device before trusting the follow-time override on the road.
+
+Traffic mode has no steady-state test of its own. Its tests in `test_custom_personalities.py` stub out the
+MPC, so they pass on the Mac but show only that the traffic follow time and jerk reach it; the steady-state
+test above covers the same follow-time path through a converging MPC. Before the traffic-mode car test
+(Test ladder step 5), run that file and `openpilot/sunnypilot/selfdrive/car/tests/test_cruise_mode.py` on
+Linux or on the device. The steady-state test must pass there, not skip.
 
 ## Rollback
 
@@ -138,5 +167,9 @@ print(CP.carFingerprint, [(str(c.safetyModel), c.safetyParam) for c in CP.safety
    lives in `CarParamsSPPersistent`, not `CarParamsPersistent`.
 3. Empty lot, driver only: lateral at walking speed, then longitudinal, stop and pedal start with `HondaLowSpeedPedal` off then on. Trigger engage and disengage chimes for the volume feature. Save the routes.
 4. Road, normal use. Re-derive steer ratio and steering-pressed threshold from these logs (spec section 9).
+5. Traffic mode, after step 3 and after the device test run under "Tests that cannot run on the Mac". Turn `TrafficModeButton` on first.
+   - Stationary, car on, cruise main on, not engaged (openpilot cannot engage while parked): hold the distance button past 0.5 s. Expected: no alert, and `ExperimentalMode` unchanged (sunnylink or SSH).
+   - Lot or quiet road with a lead car: engage, hold the button, see "Traffic Mode On". Creep and stop behind the lead three times. Hold again, see "Traffic Mode Off", and repeat the three creeps. Save the route.
+   - Log review: the gap to the lead (`radarState.leadOne.dRel`) at a standstill and at 2 to 5 m/s, on against off; `selfdriveStateSP.trafficMode` transitions; no FCW (`longitudinalPlan.fcw`). Expected: about the same stopped gap either way, and a shorter gap with traffic mode on at 2 to 5 m/s.
 
 Anything that touches the board (steering) or the pedal (longitudinal) is stationary-first, then lot, then road. No exceptions.
