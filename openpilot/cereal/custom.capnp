@@ -71,6 +71,7 @@ struct SelfdriveStateSP @0x81c2f05a394cf4af {
   intelligentCruiseButtonManagement @1 :IntelligentCruiseButtonManagement;
   buttonsPressed @2 :UInt16;
   buttonsReleaseToggle @3 :UInt16;
+  trafficMode @4 :Bool;
 
   enum AudibleAlert {
     none @0;

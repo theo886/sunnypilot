@@ -116,11 +116,13 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     v_cruise, self.output_a_target = LongitudinalPlannerSP.update_targets(self, sm, self.v_desired_filter.x, self.output_a_target, v_cruise)
 
     personality = sm['selfdriveState'].personality
+    traffic_mode = sm['selfdriveStateSP'].trafficMode
     self.mpc.set_weights(prev_accel_constraint, personality=personality,
-                         jerk_factor=self.custom_personalities.get_jerk_factor(personality))
+                         jerk_factor=self.custom_personalities.get_jerk_factor(personality, traffic_mode=traffic_mode))
     self.mpc.set_cur_state(self.v_desired_filter.x, self.output_a_target)
     self.mpc.update(sm['radarState'], personality=personality,
-                    t_follow=self.custom_personalities.get_t_follow(personality))
+                    t_follow=self.custom_personalities.get_t_follow(personality, v_ego=self.v_desired_filter.x,
+                                                                    traffic_mode=traffic_mode))
 
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)
     self.a_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)

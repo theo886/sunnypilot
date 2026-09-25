@@ -18,6 +18,7 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import (
 from openpilot.selfdrive.controls.tests.test_following_distance import desired_follow_distance, run_following_distance_simulation
 from openpilot.sunnypilot.selfdrive.controls.lib.custom_personalities import (
   CustomPersonalities, FOLLOW_KEYS, JERK_KEYS, T_FOLLOW_MIN, T_FOLLOW_MAX, JERK_MIN, JERK_MAX,
+  TRAFFIC_JERK, TRAFFIC_T_FOLLOW_BP, TRAFFIC_T_FOLLOW_V,
 )
 
 Personality = log.LongitudinalPersonality
@@ -85,6 +86,35 @@ class TestCustomPersonalities(OpenpilotTestCase):
     self.params.put_bool("CustomPersonalities", True, block=True)
     cp = CustomPersonalities()
     assert cp.get_t_follow(int(Personality.aggressive)) == cp.get_t_follow(Personality.aggressive)
+
+  def test_traffic_mode_follow_time_interpolates(self):
+    cp = CustomPersonalities()
+    assert abs(cp.get_t_follow(Personality.standard, v_ego=0.0, traffic_mode=True) - 0.5) < 1e-9
+    assert abs(cp.get_t_follow(Personality.standard, v_ego=2.5, traffic_mode=True) - 0.75) < 1e-9
+    assert abs(cp.get_t_follow(Personality.standard, v_ego=5.0, traffic_mode=True) - 1.0) < 1e-9
+    assert abs(cp.get_t_follow(Personality.standard, v_ego=30.0, traffic_mode=True) - 1.0) < 1e-9
+    assert (TRAFFIC_T_FOLLOW_BP, TRAFFIC_T_FOLLOW_V, TRAFFIC_JERK) == ([0.0, 5.0], [0.5, 1.0], 0.5)
+
+  def test_traffic_mode_jerk(self):
+    cp = CustomPersonalities()
+    assert cp.get_jerk_factor(Personality.relaxed, traffic_mode=True) == TRAFFIC_JERK
+
+  def test_traffic_mode_applies_without_custom_personalities(self):
+    # Review focus 5: traffic values do not depend on the CustomPersonalities toggle
+    assert not self.params.get_bool("CustomPersonalities")
+    cp = CustomPersonalities()
+    assert cp.get_t_follow(Personality.aggressive, v_ego=0.0, traffic_mode=True) == 0.5
+    assert cp.get_jerk_factor(Personality.aggressive, traffic_mode=True) == TRAFFIC_JERK
+
+  def test_traffic_mode_overrides_custom_values(self):
+    self.params.put_bool("CustomPersonalities", True, block=True)
+    self.params.put("StandardFollow", 2.5, block=True)
+    cp = CustomPersonalities()
+    assert cp.get_t_follow(Personality.standard, v_ego=0.0, traffic_mode=True) == 0.5
+    assert cp.get_t_follow(Personality.standard, v_ego=0.0, traffic_mode=False) == 2.5
+
+  def test_traffic_floor_is_separate_from_custom_floor(self):
+    assert T_FOLLOW_MIN == 1.0
 
 
 class TestCustomPersonalitiesInMpc(OpenpilotTestCase):
@@ -174,3 +204,31 @@ class TestCustomPersonalitiesInPlanner(OpenpilotTestCase):
     expected = desired_follow_distance(v_lead, v_lead, 2.5)
     assert abs(steady - expected) < 0.1 * expected + 0.5, (steady, expected)
     assert steady > stock + 5.0, "custom follow time did not reach the planner"
+
+  def _planner_kwargs_traffic(self, speed):
+    from openpilot.selfdrive.test.longitudinal_maneuvers.plant import Plant
+
+    plant = Plant(lead_relevancy=True, speed=speed, distance_lead=50.0, personality=Personality.standard)
+    orig_update = plant.planner.update
+
+    def update_with_traffic(sm):
+      # Plant.step builds sm as a plain dict with no selfdriveStateSP entry; add one for this frame.
+      sm['selfdriveStateSP'] = messaging.new_message('selfdriveStateSP').selfdriveStateSP
+      sm['selfdriveStateSP'].trafficMode = True
+      return orig_update(sm)
+
+    with mock.patch.object(plant.planner, "update", side_effect=update_with_traffic), \
+         mock.patch.object(plant.planner.mpc, "set_weights") as set_weights, \
+         mock.patch.object(plant.planner.mpc, "update") as update:
+      plant.step(v_lead=speed)
+    return set_weights.call_args.kwargs, update.call_args.kwargs
+
+  def test_planner_passes_traffic_values(self):
+    weights_kwargs, update_kwargs = self._planner_kwargs_traffic(speed=0.0)
+    assert weights_kwargs["jerk_factor"] == 0.5
+    assert abs(update_kwargs["t_follow"] - 0.5) < 0.05  # v_desired_filter may be a hair above 0
+
+  def test_planner_traffic_off_unchanged(self):
+    weights_kwargs, update_kwargs = self._planner_kwargs()
+    assert weights_kwargs["jerk_factor"] is None
+    assert update_kwargs["t_follow"] is None
