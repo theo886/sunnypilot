@@ -5,6 +5,7 @@ from openpilot.common.parameterized import parameterized_class
 from openpilot.common.test import OpenpilotTestCase
 from openpilot.selfdrive.selfdrived.events import Events
 from openpilot.sunnypilot.selfdrive.car.cruise_helpers import CruiseHelper, DISTANCE_LONG_PRESS, TRAFFIC_PARAM_REFRESH
+from openpilot.sunnypilot.selfdrive.selfdrived.events import EVENTS_SP
 
 ButtonEvent = car.CarState.ButtonEvent
 ButtonType = car.CarState.ButtonEvent.Type
@@ -106,12 +107,13 @@ class TestCruiseHelper(OpenpilotTestCase):
     self._with_traffic_param(True)
     self._hold(DISTANCE_LONG_PRESS * 3)  # keep holding: exactly one toggle
     assert self.cruise_helper.traffic_mode is True
+    assert self.events.names == [EventNameSP.trafficModeOn]
     self._release()
     self.cruise_helper.experimental_mode_switched = False  # selfdrived clears the latch on release
     self.events = Events()
     self._hold(DISTANCE_LONG_PRESS)
     assert self.cruise_helper.traffic_mode is False
-    assert EventNameSP.trafficModeOff in self.events.names
+    assert self.events.names == [EventNameSP.trafficModeOff]
 
   def test_traffic_hold_ignored_when_not_engaged(self):
     # Review focus 1
@@ -141,3 +143,7 @@ class TestCruiseHelper(OpenpilotTestCase):
     for _ in range(TRAFFIC_PARAM_REFRESH):
       self.cruise_helper.update(car.CarState(cruiseState={"available": True}), self.events, False, enabled=True)
     assert self.cruise_helper.traffic_mode is False
+
+  def test_traffic_alerts_registered(self):
+    assert EventNameSP.trafficModeOn in EVENTS_SP
+    assert EventNameSP.trafficModeOff in EVENTS_SP
